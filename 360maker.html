@@ -25,7 +25,7 @@ var isMobile = {
     };
 
 if ( isMobile.Android() ) {
-        document.location.href = "https://360maker.github.io/test/camaleonte_001.glb";
+        document.location.href ="intent://arvr.google.com/scene-viewer/1.0?file=https://360maker.github.io/test/camaleonte_001.glb&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;";
     }
 else if(isMobile.iOS())
 {
