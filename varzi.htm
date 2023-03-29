@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html>
+<head>
+<script>
+var isMobile = {
+        Android: function() {
+            return navigator.userAgent.match(/Android/i);
+        },
+        BlackBerry: function() {
+            return navigator.userAgent.match(/BlackBerry/i);
+        },
+        iOS: function() {
+            return navigator.userAgent.match(/iPhone|iPad|iPod/i);
+        },
+        Opera: function() {
+            return navigator.userAgent.match(/Opera Mini/i);
+        },
+        Windows: function() {
+            return navigator.userAgent.match(/IEMobile/i);
+        },
+        any: function() {
+            return (isMobile.Android() || isMobile.BlackBerry() || isMobile.iOS() || isMobile.Opera() || isMobile.Windows());
+        }
+
+    };
+
+if ( isMobile.Android() ) {
+        document.location.href ="intent://arvr.google.com/scene-viewer/1.0?file=https://360maker.github.io/test/camaleonte_001.glb&mode=ar_only#Intent;scheme=https;package=com.google.ar.core;action=android.intent.action.VIEW;S.browser_fallback_url=https://developers.google.com/ar;end;";
+    }
+else if(isMobile.iOS())
+{
+document.location.href="https://360maker.github.io/test/camaleonte_001.usdz";
+}
+</script>
+</head>
+<body>
+<img src="FLASH.jpg" alt="" width="2480" height="3543">
+
+</body>
