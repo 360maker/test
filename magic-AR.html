@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>A Magic from the Sky — AR</title>
+
+  <!-- model-viewer: in produzione conviene fissare una versione precisa invece di "latest". -->
+  <script type="module"
+    src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #06100f;
+      --bg-2: #0c1b1a;
+      --teal: #16c4b4;
+      --teal-deep: #00958f;
+      --ink: #eef6f5;
+      --muted: #8aa6a3;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      background: radial-gradient(120% 80% at 50% -10%, var(--bg-2) 0%, var(--bg) 60%);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .stage { min-height: 100%; display: flex; flex-direction: column; }
+    header { padding: 22px 24px 4px; text-align: center; }
+    .eyebrow {
+      font-size: 12px; letter-spacing: .32em; text-transform: uppercase;
+      color: var(--teal); font-weight: 600; margin: 0 0 8px;
+    }
+    h1 { margin: 0; font-size: clamp(26px, 7vw, 40px); font-weight: 800; line-height: 1.02; letter-spacing: -0.01em; }
+    .sub { margin: 10px auto 0; max-width: 30ch; color: var(--muted); font-size: 14px; line-height: 1.45; }
+    model-viewer { flex: 1; width: 100%; min-height: 320px; --poster-color: transparent; background: transparent; }
+    .ar-btn {
+      position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 26px; border: none; border-radius: 999px;
+      background: linear-gradient(180deg, var(--teal) 0%, var(--teal-deep) 100%);
+      color: #02110f; font-size: 16px; font-weight: 700; letter-spacing: .01em;
+      box-shadow: 0 10px 30px rgba(22,196,180,.35), inset 0 1px 0 rgba(255,255,255,.25);
+      cursor: pointer; transition: transform .15s ease;
+    }
+    .ar-btn:active { transform: translateX(-50%) scale(.97); }
+    .ar-btn svg { width: 20px; height: 20px; }
+    .ar-fallback {
+      position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+      width: min(86%, 420px); text-align: center; font-size: 13px; line-height: 1.5;
+      color: var(--muted); background: rgba(8,20,19,.7);
+      border: 1px solid rgba(22,196,180,.25); border-radius: 14px; padding: 14px 16px; display: none;
+    }
+    footer { text-align: center; padding: 14px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+    @media (prefers-reduced-motion: reduce) { .ar-btn { transition: none; } }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <header>
+      <p class="eyebrow">Hisense · Augmented Reality</p>
+      <h1>A Magic from the Sky</h1>
+      <p class="sub">Inquadra un piano libero davanti a te, poi tocca per posizionare e avviare lo show.</p>
+    </header>
+
+    <!-- webxr PRIMA di scene-viewer: l'audio funziona solo nel percorso webxr.
+         I device senza webxr ricadono su scene-viewer (AR ok, ma muta). -->
+    <model-viewer
+      id="viewer"
+      src="Scena_Corretta_PRESS.glb"
+      alt="A Magic from the Sky"
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      ar-placement="floor"
+      ar-scale="auto"
+      camera-controls
+      touch-action="pan-y"
+      autoplay
+      shadow-intensity="1"
+      exposure="1"
+      loading="eager"
+      reveal="auto">
+
+      <button slot="ar-button" class="ar-btn" id="arBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+             stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+          <path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 22V12"/>
+        </svg>
+        Avvia in AR
+      </button>
+
+      <div class="ar-fallback" id="fallback">
+        Questo dispositivo non supporta l'AR nel browser. Apri con <strong>Chrome</strong>
+        su un Android compatibile ARCore, oppure con <strong>Safari</strong> su iPhone/iPad.
+      </div>
+    </model-viewer>
+
+    <footer>Innovating a Brighter Life</footer>
+  </div>
+
+  <!-- Traccia audio: imposta qui il nome del tuo MP3.
+       La durata deve coincidere con quella dell'animazione del GLB. -->
+  <audio id="track" src="Export audio Mix AR.mp3" preload="auto"></audio>
+
+  <script>
+    const viewer   = document.getElementById('viewer');
+    const track    = document.getElementById('track');
+    const arBtn    = document.getElementById('arBtn');
+    const fallback = document.getElementById('fallback');
+
+    let inXR = false;     // true solo durante una sessione WebXR
+    let primed = false;   // audio "sbloccato" dal gesto utente
+
+    viewer.addEventListener('load', () => {
+      if (!viewer.canActivateAR) fallback.style.display = 'block';
+    });
+
+    // Sblocca l'audio sul tap del pulsante (policy autoplay dei browser).
+    arBtn.addEventListener('click', () => {
+      if (primed) return;
+      track.play().then(() => { track.pause(); track.currentTime = 0; primed = true; })
+                  .catch(() => {});
+    });
+
+    viewer.addEventListener('ar-status', (e) => {
+      const s = e.detail.status;
+      console.log('[AR status]', s);
+
+      if (s === 'session-started') {
+        // Siamo in WebXR (dentro la pagina): audio + animazione sincronizzati.
+        inXR = true;
+        viewer.pause();          // l'animazione non avanza da sola: la guidiamo noi
+        viewer.currentTime = 0;
+        track.currentTime = 0;
+        track.play().catch(err => console.warn('Audio bloccato:', err));
+        requestAnimationFrame(syncLoop);
+      } else {
+        // not-presenting / failed -> usciti dall'AR (o siamo finiti in Scene Viewer, fuori pagina)
+        inXR = false;
+        track.pause();
+        viewer.play();           // ripristina l'autoplay dell'anteprima in pagina
+      }
+    });
+
+    // Loop di sincronizzazione: l'AUDIO è il clock master, l'animazione lo insegue.
+    function syncLoop() {
+      if (!inXR) return;
+      try { viewer.currentTime = track.currentTime; } catch (_) {}
+      requestAnimationFrame(syncLoop);
+    }
+
+    // Quando l'audio finisce, ferma l'animazione sull'ultimo frame.
+    // Per ripetere in loop, scommenta le due righe sotto e togli questo blocco.
+    track.addEventListener('ended', () => { viewer.pause(); });
+    // track.loop = true;
+    // (con loop attivo, audio e animazione ripartono insieme da 0)
+  </script>
+</body>
+</html>
