@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>A Magic from the Sky – Hisense AR</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+<!-- model-viewer (per la produzione conviene fissare una versione, es. @google/model-viewer@4.0.0) -->
+<script type="module" src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+<style>
+  :root{ --brand:#0EB7AE; --bg:#06181c; --bg2:#0a2329; }
+  *{ box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+  html,body{ margin:0; height:100%; }
+  body{
+    font-family:'Poppins',system-ui,sans-serif;
+    background:radial-gradient(120% 120% at 50% 0%, var(--bg2) 0%, var(--bg) 60%);
+    color:#fff; display:flex; flex-direction:column; min-height:100dvh;
+  }
+  header{ padding:22px 20px 8px; text-align:center; }
+  header .kicker{ font-size:12px; letter-spacing:3px; text-transform:uppercase; color:var(--brand); font-weight:600; }
+  header h1{ font-size:22px; font-weight:700; margin:6px 0 0; }
+  .stage{ flex:1; position:relative; display:flex; }
+  model-viewer{ width:100%; height:100%; --poster-color:transparent; background:transparent; }
+  .footer{ padding:16px 20px calc(20px + env(safe-area-inset-bottom)); text-align:center; }
+  #arButton{
+    display:inline-flex; align-items:center; gap:10px;
+    background:var(--brand); color:#03252b; border:none;
+    font-family:inherit; font-size:17px; font-weight:600;
+    padding:16px 30px; border-radius:40px; cursor:pointer;
+    box-shadow:0 10px 30px rgba(14,183,174,.35);
+  }
+  #arButton:active{ transform:scale(.98); }
+  .hint{ font-size:13px; color:#7fa6aa; margin-top:14px; }
+  #unsupported{
+    display:none; margin:0 20px; padding:18px; border-radius:16px;
+    background:rgba(255,255,255,.05); border:1px solid rgba(255,255,255,.08);
+    font-size:14px; color:#cfe7e5; text-align:center;
+  }
+  #place-prompt{
+    display:none; position:absolute; left:50%; bottom:28px; transform:translateX(-50%);
+    background:rgba(0,0,0,.55); color:#fff; padding:10px 18px; border-radius:30px; font-size:13px;
+    text-align:center; max-width:80%;
+  }
+  model-viewer[ar-status="session-started"] #place-prompt{ display:block; }
+</style>
+</head>
+<body>
+  <header>
+    <div class="kicker">Hisense · FIFA World Cup 26</div>
+    <h1>A Magic from the Sky</h1>
+  </header>
+
+  <div class="stage">
+    <model-viewer
+        id="viewer"
+        ar
+        ar-modes="webxr"
+        ar-placement="floor"
+        camera-controls
+        auto-rotate
+        autoplay
+        shadow-intensity="1"
+        exposure="1"
+        alt="Hisense A Magic from the Sky">
+      <button id="arButton" slot="ar-button">▶ AVVIA AR</button>
+      <div id="place-prompt">Muovi il telefono per trovare il pavimento, poi tocca per posizionare lo show</div>
+    </model-viewer>
+  </div>
+
+  <div class="footer">
+    <div id="unsupported">Il tuo dispositivo non supporta l'esperienza AR. Aprila con Chrome su un telefono Android compatibile con ARCore.</div>
+    <div class="hint" id="hint">Tocca AVVIA AR e inquadra il pavimento</div>
+  </div>
+
+  <audio id="soundtrack" preload="auto"></audio>
+
+<script>
+  // =================================================================
+  //  CONFIG — modifica SOLO qui
+  // =================================================================
+  const CONFIG = {
+    glb:         'Scena_Corretta_PRESS.glb',          // modello GLB (Android)
+    audio:       'Magic_from_the_Sky.mp3',            // colonna sonora
+    redirectUrl: 'https://hisenseshow.it/landing/',   // pagina aperta a fine show
+
+    // SCALA di default quando l'animazione viene posizionata nello spazio.
+    // Il GLB è in METRI: 1 = dimensione reale autorata in Blender.
+    // 0.5 = metà, 2 = doppia, ecc. (vale solo in AR, l'anteprima si riadatta da sola)
+    modelScale:  1,
+
+    arScale:     'fixed',   // 'fixed' = blocca il pinch-zoom alla scala impostata · 'auto' = l'utente può ridimensionare
+    animationName: '',      // vuoto = prima animazione del GLB
+  };
+  // =================================================================
+
+  const viewer = document.getElementById('viewer');
+  const track  = document.getElementById('soundtrack');
+
+  // applica i parametri di CONFIG
+  viewer.setAttribute('src', CONFIG.glb);
+  track.setAttribute('src', CONFIG.audio);
+  viewer.setAttribute('ar-scale', CONFIG.arScale);
+  viewer.setAttribute('scale', `${CONFIG.modelScale} ${CONFIG.modelScale} ${CONFIG.modelScale}`);
+  if (CONFIG.animationName) viewer.setAttribute('animation-name', CONFIG.animationName);
+
+  let inXR = false, showStarted = false, rafId = null;
+
+  // messaggio di non-compatibilità se il device non può fare AR
+  viewer.addEventListener('load', () => {
+    if (!viewer.canActivateAR) {
+      document.getElementById('unsupported').style.display = 'block';
+      document.getElementById('hint').style.display = 'none';
+    }
+    viewer.updateFraming?.();
+  });
+
+  viewer.addEventListener('ar-status', (e) => {
+    const s = e.detail.status;
+
+    if (s === 'session-started') {
+      // Sessione AR avviata DOPO il consenso. L'audio è ancora FERMO.
+      inXR = true;
+      viewer.pause();          // il clock interno si ferma: l'audio farà da master
+      viewer.currentTime = 0;
+
+    } else if (s === 'object-placed') {
+      // L'utente ha posizionato l'animazione nello spazio:
+      // QUI partono insieme animazione e audio, perfettamente in sync.
+      if (showStarted) return; // una sola volta
+      showStarted = true;
+      track.currentTime = 0;
+      track.play().catch(err => console.warn('Audio bloccato dal browser:', err));
+      syncLoop();
+
+    } else if (s === 'not-presenting' || s === 'failed') {
+      // Uscita dall'AR o errore: ferma tutto, nessun redirect.
+      inXR = false; showStarted = false;
+      track.pause();
+      cancelAnimationFrame(rafId);
+    }
+  });
+
+  // L'AUDIO è il clock master: l'animazione lo insegue fotogramma per fotogramma.
+  function syncLoop(){
+    if (!inXR) return;
+    try { viewer.currentTime = track.currentTime; } catch(_) {}
+    rafId = requestAnimationFrame(syncLoop);
+  }
+
+  // FINE SHOW = fine audio  →  niente loop, apre la landing.
+  track.addEventListener('ended', () => {
+    cancelAnimationFrame(rafId);
+    window.location.href = CONFIG.redirectUrl;
+  });
+</script>
+</body>
+</html>
