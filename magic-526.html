@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>Hisense — AR</title>
+
+  <script type="module"
+    src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+  <style>
+    :root {
+      --teal: #16c4b4;
+      --teal-deep: #00958f;
+      --ink: #0b1b1a;
+      --muted: #5a6b6a;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      background: #ffffff;             /* sfondo pagina BIANCO */
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* model-viewer: serve solo a caricare il GLB e a lanciare l'AR.
+       Sta DIETRO la schermata bianca (non e' display:none, cosi' carica davvero). */
+    model-viewer {
+      position: fixed; inset: 0; width: 100%; height: 100%;
+      z-index: 0; background: transparent;
+    }
+    model-viewer::part(default-ar-button) { display: none; }
+
+    /* ===== Schermata iniziale (anteprima) ===== */
+    .landing {
+      position: fixed; inset: 0; z-index: 2;
+      background: #ffffff;
+      display: flex; flex-direction: column; align-items: center;
+      text-align: center;
+      padding: calc(26px + env(safe-area-inset-top)) 24px calc(26px + env(safe-area-inset-bottom));
+    }
+    .landing .message {
+      margin: 8px auto 0; max-width: 22ch;
+      font-size: clamp(18px, 5.2vw, 24px); font-weight: 700; line-height: 1.3;
+      color: var(--ink);
+    }
+    .landing .message b { color: var(--teal-deep); }
+    .landing .hero {
+      flex: 1; min-height: 0;
+      max-width: 86vw; max-height: 100%;
+      object-fit: contain;
+      margin: 14px 0 18px;
+      filter: drop-shadow(0 18px 30px rgba(0,0,0,.12));
+    }
+    .ar-btn {
+      flex: 0 0 auto;
+      display: inline-flex; align-items: center; justify-content: center; gap: 10px;
+      padding: 17px 34px; border: none; border-radius: 999px;
+      background: linear-gradient(180deg, var(--teal) 0%, var(--teal-deep) 100%);
+      color: #ffffff; font-size: 17px; font-weight: 800; letter-spacing: .02em;
+      box-shadow: 0 12px 30px rgba(22,196,180,.4), inset 0 1px 0 rgba(255,255,255,.35);
+      cursor: pointer; transition: transform .15s ease;
+    }
+    .ar-btn:active { transform: scale(.97); }
+    .ar-btn svg { width: 20px; height: 20px; }
+
+    .ar-fallback {
+      margin-top: 16px; width: min(90%, 420px);
+      font-size: 13px; line-height: 1.5; color: var(--muted);
+      background: #f2f6f5; border: 1px solid rgba(0,149,143,.18);
+      border-radius: 14px; padding: 14px 16px; display: none;
+    }
+    @media (prefers-reduced-motion: reduce) { .ar-btn { transition: none; } }
+  </style>
+</head>
+<body>
+
+  <!-- ====== MOTORE AR (identico a 514_OLD, solo nascosto dietro la schermata bianca) ======
+       src     = GLB  -> AR su Android (WebXR / Scene Viewer)
+       ios-src = USDZ -> AR Quick Look su iOS -->
+  <model-viewer
+    id="viewer"
+    src="Scena_Corretta_PRESS.glb"
+    ios-src="Scena_Corretta_512.usdz"
+    alt="A Magic from the Sky"
+    ar
+    ar-modes="webxr scene-viewer quick-look"
+    ar-placement="floor"
+    ar-scale="auto"
+    shadow-intensity="1"
+    exposure="1"
+    loading="eager"
+    reveal="auto">
+  </model-viewer>
+
+  <!-- ====== Schermata iniziale (anteprima) ====== -->
+  <div class="landing">
+    <p class="message">Mettiti con il cellulare davanti alla coppa e clicca su <b>AVVIA in AR</b></p>
+
+    <img class="hero" src="Podio-Coppa-FRONTE.png" alt="Coppa del Mondo FIFA — Hisense" />
+
+    <button class="ar-btn" id="arBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 22V12"/>
+      </svg>
+      AVVIA in AR
+    </button>
+
+    <div class="ar-fallback" id="fallback">
+      Questo dispositivo non supporta l'AR nel browser. Apri con <strong>Chrome</strong>
+      su un Android compatibile ARCore, oppure con <strong>Safari</strong> su iPhone/iPad.
+    </div>
+  </div>
+
+  <!-- Traccia audio (solo Android/WebXR). La durata deve coincidere con l'animazione del GLB. -->
+  <audio id="track" src="Audio_mondiale.mp3" preload="auto"></audio>
+
+  <script>
+    // === Pagina aperta automaticamente alla fine dello show ===
+    const REDIRECT_URL = 'https://hisenseshow.it/landing/';
+
+    const viewer   = document.getElementById('viewer');
+    const track    = document.getElementById('track');
+    const arBtn    = document.getElementById('arBtn');
+    const fallback = document.getElementById('fallback');
+
+    /* ---- Rilevamento del sistema operativo ---- */
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isAndroid = /Android/.test(ua);
+
+    let inXR = false;
+    let primed = false;       // audio "sbloccato" dal tap sul bottone
+    let showStarted = false;  // lo show parte una sola volta per sessione
+
+    viewer.addEventListener('load', () => {
+      if (!viewer.canActivateAR) fallback.style.display = 'block';
+    });
+
+    function enterAR() {
+      if (viewer.canActivateAR) viewer.activateAR();
+      else fallback.style.display = 'block';
+    }
+
+    /* Tap sul bottone: su Android SBLOCCHIAMO l'audio (play+pause immediato = consenso gesto),
+       poi lanciamo l'AR. Su iOS apre direttamente Quick Look. */
+    arBtn.addEventListener('click', () => {
+      if (isAndroid && !primed) {
+        track.play().then(() => { track.pause(); track.currentTime = 0; primed = true; })
+                    .catch(() => {});
+      }
+      enterAR();
+    });
+
+    /* ======= DA QUI IN POI: identico al file che funzionava (514_OLD) ======= */
+    viewer.addEventListener('ar-status', (e) => {
+      const s = e.detail.status;
+      console.log('[AR status]', s);
+
+      if (!isAndroid) return; // la sincronia audio+animazione vale solo su Android in WebXR
+
+      if (s === 'session-started') {
+        if (showStarted) return;       // una sola volta per sessione
+        showStarted = true;
+        inXR = true;
+        viewer.pause();                // l'audio fa da clock master
+        viewer.currentTime = 0;
+        track.currentTime = 0;
+        track.play().catch(err => console.warn('Audio bloccato:', err));
+        requestAnimationFrame(syncLoop);
+
+      } else if (s === 'not-presenting' || s === 'failed') {
+        inXR = false;
+        showStarted = false;
+        track.pause();
+      }
+    });
+
+    // Loop di sincronizzazione: l'AUDIO e' il clock master, l'animazione lo insegue.
+    function syncLoop() {
+      if (!inXR) return;
+      try { viewer.currentTime = track.currentTime; } catch (_) {}
+      requestAnimationFrame(syncLoop);
+    }
+
+    /* FINE SHOW: a fine traccia audio (= fine animazione) si apre la landing. */
+    track.addEventListener('ended', () => {
+      inXR = false;
+      window.location.href = REDIRECT_URL;
+    });
+  </script>
+</body>
+</html>
