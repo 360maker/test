@@ -1,0 +1,10 @@
+{
+  "name": "Hisense AR Show",
+  "short_name": "Hisense AR",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "background_color": "#041817",
+  "theme_color": "#041817",
+  "orientation": "any",
+  "icons": []
+}

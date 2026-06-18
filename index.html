@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="it">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#041817" />
+    <title>Hisense AR Show</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='12' fill='%23041817'/%3E%3Cpath d='M10 24h44v16H10z' rx='8' fill='none' stroke='%2316c4b4' stroke-width='6'/%3E%3C/svg%3E" />
+    <link rel="preload" href="./assets/Coppa_Trasparente.png" as="image" />
+    <link rel="stylesheet" href="./styles.css" />
+    <script type="importmap">
+      {
+        "imports": {
+          "three": "./vendor/three/three.module.js",
+          "three/addons/": "./vendor/three/addons/"
+        }
+      }
+    </script>
+  </head>
+  <body>
+    <main id="app" class="app" data-mode="boot">
+      <video id="cameraFeed" class="camera-feed" autoplay muted playsinline></video>
+      <canvas id="xrCanvas" class="xr-canvas"></canvas>
+
+      <section id="introPanel" class="intro-panel" aria-labelledby="introTitle">
+        <div class="brand-row">
+          <span class="brand-mark"></span>
+          <span>Hisense</span>
+        </div>
+        <h1 id="introTitle">A Magic from the Sky</h1>
+        <p class="intro-copy">Allinea la coppa reale e avvia lo show.</p>
+        <button id="startExperience" class="primary-action" type="button">
+          <span class="button-icon" aria-hidden="true">AR</span>
+          Avvia
+        </button>
+        <p id="supportLine" class="support-line">Chrome Android consigliato.</p>
+      </section>
+
+      <section id="xrOverlay" class="xr-overlay" aria-live="polite">
+        <div class="top-bar">
+          <button id="exitButton" class="icon-button" type="button" aria-label="Chiudi">×</button>
+          <output id="statusText" class="status-pill">Caricamento</output>
+        </div>
+
+        <div id="cupGuide" class="cup-guide" aria-hidden="true">
+          <img src="./assets/Coppa_Trasparente.png" alt="" />
+        </div>
+
+        <div id="calibrationControls" class="calibration-controls">
+          <div class="adjust-grid" aria-label="Regolazioni rapide">
+            <button class="chip-button" id="smallerButton" type="button">Scala −</button>
+            <button class="chip-button" id="largerButton" type="button">Scala +</button>
+            <button class="chip-button" id="nearerButton" type="button">Vicino</button>
+            <button class="chip-button" id="fartherButton" type="button">Lontano</button>
+          </div>
+          <button id="placeButton" class="primary-action place-action" type="button">Blocca e avvia</button>
+        </div>
+
+        <div id="showControls" class="show-controls">
+          <button id="recalibrateButton" class="secondary-action" type="button">Riposiziona</button>
+          <button id="restartButton" class="secondary-action" type="button">Riavvia</button>
+        </div>
+
+        <section id="finalPanel" class="final-panel" aria-labelledby="finalTitle">
+          <div class="brand-row">
+            <span class="brand-mark"></span>
+            <span>Hisense</span>
+          </div>
+          <h2 id="finalTitle">Innovating a Brighter Life</h2>
+          <p>Grazie per aver vissuto lo show.</p>
+          <a class="primary-action final-link" href="https://hisenseshow.it/landing/">Continua</a>
+        </section>
+      </section>
+    </main>
+
+    <audio id="showAudio" src="./assets/Audio_mondiale.mp3" preload="auto"></audio>
+    <script type="module" src="./src/app.js"></script>
+  </body>
+</html>
