@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>A Magic from the Sky — AR</title>
+
+  <link rel="preload" as="fetch" href="Scena_Corretta_512.glb" crossorigin="anonymous" />
+  <script type="module"
+    src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+  <style>
+    :root { --bg:#06100f; --bg-2:#0c1b1a; --teal:#16c4b4; --teal-deep:#00958f; --ink:#eef6f5; --muted:#8aa6a3; }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      background: radial-gradient(120% 80% at 50% -10%, var(--bg-2) 0%, var(--bg) 60%);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .stage { position: relative; min-height: 100%; display: flex; flex-direction: column; align-items: center; }
+    header { padding: 30px 24px 4px; text-align: center; }
+    .eyebrow { font-size: 12px; letter-spacing: .32em; text-transform: uppercase; color: var(--teal); font-weight: 600; margin: 0 0 8px; }
+    h1 { margin: 0; font-size: clamp(26px, 7vw, 40px); font-weight: 800; line-height: 1.02; letter-spacing: -0.01em; }
+    .sub { margin: 10px auto 0; max-width: 30ch; color: var(--muted); font-size: 14px; line-height: 1.45; }
+    .hero { flex: 1; display: flex; align-items: center; justify-content: center; padding: 16px; }
+    .hero img { height: min(46vh, 360px); opacity: .22; filter: drop-shadow(0 8px 30px rgba(22,196,180,.25)); }
+
+    .ar-btn {
+      margin: 0 0 calc(22px + env(safe-area-inset-bottom));
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 30px; border: none; border-radius: 999px;
+      background: linear-gradient(180deg, var(--teal) 0%, var(--teal-deep) 100%);
+      color: #02110f; font-size: 17px; font-weight: 700; letter-spacing: .01em;
+      box-shadow: 0 10px 30px rgba(22,196,180,.35), inset 0 1px 0 rgba(255,255,255,.25);
+      cursor: pointer; transition: transform .15s ease;
+    }
+    .ar-btn:active { transform: scale(.97); }
+    .ar-btn svg { width: 20px; height: 20px; }
+    footer { padding: 0 0 14px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+
+    /* ===== Overlay fotocamera + show ===== */
+    #ar {
+      position: fixed; inset: 0; z-index: 50; background: #000;
+      opacity: 0; pointer-events: none; transition: opacity .2s ease;
+    }
+    #ar.active { opacity: 1; pointer-events: auto; }
+
+    #camFeed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+
+    /* il 3D, trasparente, sopra la fotocamera. Nascosto durante l'allineamento. */
+    #viewer {
+      position: absolute; inset: 0; width: 100%; height: 100%; z-index: 2;
+      background: transparent; --poster-color: transparent; visibility: hidden;
+    }
+    #ar.showing #viewer { visibility: visible; }
+
+    /* sagoma guida, mostrata durante l'allineamento */
+    #guide { position: absolute; inset: 0; z-index: 3; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    #guide img, #guide svg {
+      height: var(--sil-h, 85vh); width: auto; max-width: 92vw; opacity: var(--sil-op, .6);
+      filter: drop-shadow(0 0 8px rgba(0,0,0,.7));
+    }
+    #ar.showing #guide { display: none; }
+
+    #arHint {
+      position: absolute; left: 0; right: 0; top: calc(16px + env(safe-area-inset-top)); z-index: 4;
+      text-align: center; color: #fff; font-size: 14px; line-height: 1.4; padding: 0 26px; text-shadow: 0 1px 4px rgba(0,0,0,.75);
+    }
+    #ar.showing #arHint { display: none; }
+
+    #startBtn {
+      position: absolute; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 4;
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 32px; border: none; border-radius: 999px;
+      background: linear-gradient(180deg, var(--teal) 0%, var(--teal-deep) 100%);
+      color: #02110f; font-size: 17px; font-weight: 700;
+      box-shadow: 0 10px 30px rgba(22,196,180,.4), inset 0 1px 0 rgba(255,255,255,.25); cursor: pointer;
+    }
+    #startBtn:active { transform: translateX(-50%) scale(.97); }
+    #ar.showing #startBtn { display: none; }
+
+    #closeAr {
+      position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 16px; z-index: 5;
+      width: 40px; height: 40px; border-radius: 50%; border: none;
+      background: rgba(0,0,0,.45); color: #fff; font-size: 20px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <header>
+      <p class="eyebrow">Hisense · Augmented Reality</p>
+      <h1>A Magic from the Sky</h1>
+      <p class="sub">Punta la coppa, allinea la sagoma e fai partire lo show.</p>
+    </header>
+
+    <div class="hero"><img id="heroImg" alt="" /></div>
+
+    <button class="ar-btn" id="arBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 22V12"/>
+      </svg>
+      Avvia in AR
+    </button>
+
+    <footer>Innovating a Brighter Life</footer>
+  </div>
+
+  <!-- ===== Overlay: fotocamera reale + sagoma + show 3D in trasparenza ===== -->
+  <div id="ar">
+    <video id="camFeed" autoplay playsinline muted></video>
+
+    <!-- 3D renderizzato SOPRA la fotocamera, senza modalita' AR / senza ancoraggio al pavimento -->
+    <model-viewer
+      id="viewer"
+      src="Scena_Corretta_512.glb"
+      alt="A Magic from the Sky"
+      camera-orbit="0deg 85deg auto"
+      interaction-prompt="none"
+      shadow-intensity="0"
+      exposure="1"
+      loading="eager"
+      reveal="auto">
+    </model-viewer>
+
+    <div id="guide">
+      <svg id="silSvg" viewBox="0 0 200 320" fill="none" stroke="var(--teal)" stroke-width="3"
+           stroke-linejoin="round" stroke-linecap="round" style="display:none">
+        <path d="M60 30 H140 V70 Q140 132 100 152 Q60 132 60 70 Z"/>
+        <path d="M60 52 Q28 52 28 82 Q28 108 60 114"/>
+        <path d="M140 52 Q172 52 172 82 Q172 108 140 114"/>
+        <line x1="100" y1="152" x2="100" y2="222"/>
+        <path d="M72 222 H128 L118 252 H82 Z"/>
+        <rect x="58" y="252" width="84" height="20" rx="4"/>
+        <rect x="48" y="272" width="104" height="16" rx="4"/>
+      </svg>
+      <img id="silImg" alt="" style="display:none" />
+    </div>
+
+    <div id="arHint">Avvicinati alla coppa e sovrapponi il contorno alla coppa reale, poi avvia.</div>
+    <button id="closeAr" aria-label="Chiudi">×</button>
+    <button id="startBtn">Avvia l'esperienza</button>
+  </div>
+
+  <!-- Traccia audio. La durata deve coincidere con l'animazione del GLB (~30s). -->
+  <audio id="track" src="Audio_mondiale.mp3" preload="auto"></audio>
+
+  <script>
+    /* =================================================================
+       PARAMETRI — modifica solo qui
+       ================================================================= */
+
+    const REDIRECT_URL = 'https://hisenseshow.it/landing/';
+
+    // SAGOMA guida (PNG trasparente). Grande = utente piu' vicino alla coppa.
+    const SILHOUETTE_SRC    = 'Coppa_Trasparente.png';
+    const SILHOUETTE_HEIGHT = '85vh';   // altezza della sagoma sullo schermo (alza per stare ancora piu' vicini)
+    const SILHOUETTE_OPACITY = 0.6;
+
+    // INQUADRATURA del 3D durante lo show (model-viewer camera-orbit: "theta phi raggio").
+    // phi piccolo = guardi dall'alto, phi grande = dal basso verso l'alto. 'auto' come raggio = inquadra tutta la scena.
+    // Per vedere la coppa piu' grande, sostituisci 'auto' con un valore tipo "8m" (piu' piccolo = piu' vicino).
+    const CAMERA_ORBIT = '0deg 85deg auto';
+    /* ================================================================= */
+
+    const arBtn   = document.getElementById('arBtn');
+    const arOv    = document.getElementById('ar');
+    const camFeed = document.getElementById('camFeed');
+    const viewer  = document.getElementById('viewer');
+    const track   = document.getElementById('track');
+    const silImg  = document.getElementById('silImg');
+    const silSvg  = document.getElementById('silSvg');
+    const heroImg = document.getElementById('heroImg');
+    const guide   = document.getElementById('guide');
+    const startBtn= document.getElementById('startBtn');
+    const closeAr = document.getElementById('closeAr');
+    const arHint  = document.getElementById('arHint');
+
+    viewer.setAttribute('camera-orbit', CAMERA_ORBIT);
+    guide.style.setProperty('--sil-h', SILHOUETTE_HEIGHT);
+    guide.style.setProperty('--sil-op', SILHOUETTE_OPACITY);
+    if (SILHOUETTE_SRC) {
+      silImg.src = SILHOUETTE_SRC; silImg.style.display = 'block'; silSvg.style.display = 'none';
+      heroImg.src = SILHOUETTE_SRC;
+    } else { silSvg.style.display = 'block'; }
+
+    let camStream = null, showStarted = false, primed = false, raf = null;
+
+    // Sblocco audio sul tap del bottone (gesto utente)
+    arBtn.addEventListener('click', async () => {
+      if (!primed) {
+        track.play().then(() => { track.pause(); track.currentTime = 0; primed = true; }).catch(() => {});
+      }
+      openOverlay();
+    });
+
+    async function openOverlay() {
+      arOv.classList.add('active');
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        camFeed.srcObject = camStream;
+      } catch (err) {
+        arHint.textContent = "Fotocamera non disponibile. Puoi comunque avviare l'esperienza.";
+        console.warn('getUserMedia:', err);
+      }
+    }
+
+    function stopCam() {
+      if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+      camFeed.srcObject = null;
+    }
+
+    // Avvio show: 3D in trasparenza sopra la fotocamera + audio, in sync. Nessun ancoraggio.
+    startBtn.addEventListener('click', () => {
+      if (showStarted) return;
+      showStarted = true;
+      arOv.classList.add('showing');     // nasconde sagoma e bottoni, mostra il 3D
+      viewer.pause();                    // l'audio fa da clock master
+      viewer.currentTime = 0;
+      track.currentTime = 0;
+      track.play().catch(err => console.warn('Audio bloccato:', err));
+      raf = requestAnimationFrame(syncLoop);
+    });
+
+    function syncLoop() {
+      try { viewer.currentTime = track.currentTime; } catch (_) {}
+      raf = requestAnimationFrame(syncLoop);
+    }
+
+    function closeAll() {
+      cancelAnimationFrame(raf);
+      track.pause(); track.currentTime = 0;
+      stopCam();
+      arOv.classList.remove('active', 'showing');
+      showStarted = false;
+      try { viewer.currentTime = 0; } catch (_) {}
+    }
+    closeAr.addEventListener('click', closeAll);
+
+    // Fine show: niente loop, apre la landing.
+    track.addEventListener('ended', () => {
+      cancelAnimationFrame(raf);
+      stopCam();
+      window.location.href = REDIRECT_URL;
+    });
+  </script>
+</body>
+</html>
