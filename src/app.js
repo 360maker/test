@@ -141,8 +141,14 @@ async function loadExperience() {
           object.castShadow = false;
           object.receiveShadow = false;
           if (object.material) {
-            object.material.side = THREE.FrontSide;
-            object.material.needsUpdate = true;
+            const materials = Array.isArray(object.material) ? object.material : [object.material];
+            const needsDoubleSide = object.name.toLowerCase().includes("frigorifero")
+              || materials.some((material) => /frigorifero|frigo|interno|porte/i.test(material.name || ""));
+
+            materials.forEach((material) => {
+              material.side = needsDoubleSide ? THREE.DoubleSide : THREE.FrontSide;
+              material.needsUpdate = true;
+            });
           }
         });
 
@@ -360,8 +366,7 @@ function recalibrate() {
 function finishShow() {
   showRunning = false;
   mixer?.setTime(Math.min(clipDuration, audio.duration || clipDuration));
-  setStatus("Show completato");
-  setMode(currentMode.startsWith("fallback") ? "fallback-final" : "final");
+  window.location.assign(CONFIG.finalUrl);
 }
 
 function renderFallbackLoop() {
