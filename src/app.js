@@ -4,17 +4,22 @@ import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 
 const CONFIG = {
   realCupHeightMeters: 4.85,
-  defaultSceneScale: 1.05,
-  minSceneScale: 0.72,
-  maxSceneScale: 1.42,
-  scaleStep: 0.06,
+  defaultSceneScale: 2.2,
+  minSceneScale: 1.2,
+  maxSceneScale: 4.0,
+  scaleStep: 0.12,
   distanceStep: 0.08,
   minDistanceFactor: 0.72,
   maxDistanceFactor: 1.38,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
-  yawOffsetRadians: 0,
+  yawOffsetRadians: Math.PI,
   finalUrl: "https://hisenseshow.it/landing/"
+};
+
+const STORAGE_KEYS = {
+  sceneScale: "hisense.sceneScale.front.v2",
+  distanceFactor: "hisense.distanceFactor.front.v2"
 };
 
 const app = document.getElementById("app");
@@ -53,8 +58,8 @@ let xrReferenceSpaceType = "local";
 let fallbackStream;
 let currentMode = "boot";
 let showRunning = false;
-let sceneScale = readStoredNumber("hisense.sceneScale", CONFIG.defaultSceneScale);
-let distanceFactor = readStoredNumber("hisense.distanceFactor", 1);
+let sceneScale = readStoredNumber(STORAGE_KEYS.sceneScale, CONFIG.defaultSceneScale);
+let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, 1);
 
 sceneScale = clamp(sceneScale, CONFIG.minSceneScale, CONFIG.maxSceneScale);
 distanceFactor = clamp(distanceFactor, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
@@ -375,14 +380,14 @@ function render() {
 
 function adjustScale(delta) {
   sceneScale = clamp(sceneScale + delta, CONFIG.minSceneScale, CONFIG.maxSceneScale);
-  localStorage.setItem("hisense.sceneScale", String(sceneScale));
+  localStorage.setItem(STORAGE_KEYS.sceneScale, String(sceneScale));
   stageRoot?.scale.setScalar(sceneScale);
   setStatus(`Scala ${Math.round(sceneScale * 100)}%`);
 }
 
 function adjustDistance(delta) {
   distanceFactor = clamp(distanceFactor + delta, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
-  localStorage.setItem("hisense.distanceFactor", String(distanceFactor));
+  localStorage.setItem(STORAGE_KEYS.distanceFactor, String(distanceFactor));
   setStatus(`Distanza ${Math.round(distanceFactor * 100)}%`);
 }
 
