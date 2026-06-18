@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+  <title>A Magic from the Sky — AR</title>
+
+  <script type="module"
+    src="https://unpkg.com/@google/model-viewer/dist/model-viewer.min.js"></script>
+
+  <style>
+    :root {
+      --bg: #06100f; --bg-2: #0c1b1a; --teal: #16c4b4; --teal-deep: #00958f;
+      --ink: #eef6f5; --muted: #8aa6a3;
+    }
+    * { box-sizing: border-box; }
+    html, body {
+      margin: 0; height: 100%;
+      background: radial-gradient(120% 80% at 50% -10%, var(--bg-2) 0%, var(--bg) 60%);
+      color: var(--ink);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, system-ui, sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+    .stage { position: relative; min-height: 100%; display: flex; flex-direction: column; }
+    header { padding: 22px 24px 4px; text-align: center; }
+    .eyebrow { font-size: 12px; letter-spacing: .32em; text-transform: uppercase; color: var(--teal); font-weight: 600; margin: 0 0 8px; }
+    h1 { margin: 0; font-size: clamp(26px, 7vw, 40px); font-weight: 800; line-height: 1.02; letter-spacing: -0.01em; }
+    .sub { margin: 10px auto 0; max-width: 30ch; color: var(--muted); font-size: 14px; line-height: 1.45; }
+    model-viewer { flex: 1; width: 100%; min-height: 320px; --poster-color: transparent; background: transparent; }
+    model-viewer::part(default-ar-button) { display: none; }
+    .ar-btn {
+      position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 26px; border: none; border-radius: 999px;
+      background: linear-gradient(180deg, var(--teal) 0%, var(--teal-deep) 100%);
+      color: #02110f; font-size: 16px; font-weight: 700; letter-spacing: .01em;
+      box-shadow: 0 10px 30px rgba(22,196,180,.35), inset 0 1px 0 rgba(255,255,255,.25);
+      cursor: pointer; transition: transform .15s ease; z-index: 5;
+    }
+    .ar-btn:active { transform: translateX(-50%) scale(.97); }
+    .ar-btn svg { width: 20px; height: 20px; }
+    .ar-fallback {
+      position: absolute; left: 50%; bottom: 28px; transform: translateX(-50%);
+      width: min(86%, 420px); text-align: center; font-size: 13px; line-height: 1.5;
+      color: var(--muted); background: rgba(8,20,19,.7);
+      border: 1px solid rgba(22,196,180,.25); border-radius: 14px; padding: 14px 16px; display: none; z-index: 6;
+    }
+    footer { text-align: center; padding: 14px; font-size: 11px; letter-spacing: .18em; text-transform: uppercase; color: var(--muted); }
+    @media (prefers-reduced-motion: reduce) { .ar-btn { transition: none; } }
+
+    /* ---- Schermata orientamento: fotocamera reale + sagoma della coppa (solo per capire dove puntare) ---- */
+    #align { position: fixed; inset: 0; z-index: 50; display: none; background: #000; }
+    #align.show { display: block; }
+    #camFeed { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; z-index: 1; }
+    #guide { position: absolute; inset: 0; z-index: 2; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+    /* la sagoma mantiene le proporzioni dell'immagine (1024x1536): si adatta dentro questi limiti senza stirarsi */
+    #guide img, #guide svg {
+      max-height: var(--sil-h, 88vh); max-width: var(--sil-w, 92vw); opacity: var(--sil-op, .6);
+      filter: drop-shadow(0 0 8px rgba(0,0,0,.7));
+    }
+    #alignHint {
+      position: absolute; left: 0; right: 0; top: calc(16px + env(safe-area-inset-top)); z-index: 3;
+      text-align: center; color: #fff; font-size: 14px; line-height: 1.4; padding: 0 26px; text-shadow: 0 1px 4px rgba(0,0,0,.75);
+    }
+    #startBtn {
+      position: absolute; left: 50%; bottom: calc(30px + env(safe-area-inset-bottom)); transform: translateX(-50%); z-index: 3;
+      display: inline-flex; align-items: center; gap: 10px;
+      padding: 16px 32px; border: none; border-radius: 999px;
+      background: linear-gradient(180deg, var(--teal) 0%, var(--teal-deep) 100%);
+      color: #02110f; font-size: 17px; font-weight: 700;
+      box-shadow: 0 10px 30px rgba(22,196,180,.4), inset 0 1px 0 rgba(255,255,255,.25); cursor: pointer;
+    }
+    #startBtn:active { transform: translateX(-50%) scale(.97); }
+    #closeAlign {
+      position: absolute; top: calc(14px + env(safe-area-inset-top)); right: 16px; z-index: 4;
+      width: 40px; height: 40px; border-radius: 50%; border: none;
+      background: rgba(0,0,0,.45); color: #fff; font-size: 20px; cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div class="stage">
+    <header>
+      <p class="eyebrow">Hisense · Augmented Reality</p>
+      <h1>A Magic from the Sky</h1>
+      <p class="sub" id="sub">Tocca per avviare: lo show in realtà aumentata parte subito davanti a te.</p>
+    </header>
+
+    <!-- SCALA DI DEFAULT: l'attributo scale="1.4 1.4 1.4" ingrandisce del 40% rispetto al reale.
+         Aumenta i tre numeri (es. 1.7 1.7 1.7) per farla piu' grande, diminuisci per piu' piccola.
+         (ar-scale="auto" lascia comunque all'utente lo zoom con le dita.) -->
+    <model-viewer
+      id="viewer"
+      src="Scena_Corretta_512.glb"
+      ios-src="Scena_Corretta_512.usdz"
+      alt="A Magic from the Sky"
+      ar
+      ar-modes="webxr scene-viewer quick-look"
+      ar-placement="floor"
+      ar-scale="auto"
+      scale="1.4 1.4 1.4"
+      camera-controls
+      touch-action="pan-y"
+      autoplay
+      shadow-intensity="1"
+      exposure="1"
+      loading="eager"
+      reveal="auto">
+    </model-viewer>
+
+    <button class="ar-btn" id="arBtn">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+           stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M12 2 3 7v10l9 5 9-5V7z"/><path d="M3 7l9 5 9-5"/><path d="M12 22V12"/>
+      </svg>
+      Avvia in AR
+    </button>
+
+    <div class="ar-fallback" id="fallback">
+      Questo dispositivo non supporta l'AR nel browser. Apri con <strong>Chrome</strong>
+      su un Android compatibile ARCore, oppure con <strong>Safari</strong> su iPhone/iPad.
+    </div>
+
+    <footer>Innovating a Brighter Life</footer>
+  </div>
+
+  <!-- ===== Schermata orientamento: solo per far capire dove puntare ===== -->
+  <div id="align">
+    <video id="camFeed" autoplay playsinline muted></video>
+    <div id="guide">
+      <svg id="silSvg" viewBox="0 0 200 320" fill="none" stroke="var(--teal)" stroke-width="3"
+           stroke-linejoin="round" stroke-linecap="round" style="display:none">
+        <path d="M60 30 H140 V70 Q140 132 100 152 Q60 132 60 70 Z"/>
+        <path d="M60 52 Q28 52 28 82 Q28 108 60 114"/>
+        <path d="M140 52 Q172 52 172 82 Q172 108 140 114"/>
+        <line x1="100" y1="152" x2="100" y2="222"/>
+        <path d="M72 222 H128 L118 252 H82 Z"/>
+        <rect x="58" y="252" width="84" height="20" rx="4"/>
+        <rect x="48" y="272" width="104" height="16" rx="4"/>
+      </svg>
+      <img id="silImg" alt="" style="display:none" />
+    </div>
+    <div id="alignHint">Punta la fotocamera verso la coppa, allinea grossomodo la sagoma, poi avvia.</div>
+    <button id="closeAlign" aria-label="Chiudi">×</button>
+    <button id="startBtn">Avvia lo show</button>
+  </div>
+
+  <!-- Traccia audio (solo Android/WebXR). La durata deve coincidere con l'animazione del GLB. -->
+  <audio id="track" src="Audio_mondiale.mp3" preload="auto"></audio>
+
+  <script>
+    // === Pagina aperta automaticamente alla fine dello show ===
+    const REDIRECT_URL = 'https://hisenseshow.it/landing/';
+
+    // === Sagoma di orientamento (PNG trasparente 1024x1536) ===
+    const SILHOUETTE_SRC     = 'Coppa_Trasparente.png';
+    const SILHOUETTE_HEIGHT  = '88vh';   // altezza massima della sagoma sullo schermo
+    const SILHOUETTE_WIDTH   = '92vw';   // larghezza massima (si adatta mantenendo le proporzioni)
+    const SILHOUETTE_OPACITY = 0.6;
+
+    const viewer   = document.getElementById('viewer');
+    const track    = document.getElementById('track');
+    const arBtn    = document.getElementById('arBtn');
+    const fallback = document.getElementById('fallback');
+    const sub      = document.getElementById('sub');
+
+    const align     = document.getElementById('align');
+    const camFeed   = document.getElementById('camFeed');
+    const guide     = document.getElementById('guide');
+    const silImg    = document.getElementById('silImg');
+    const silSvg    = document.getElementById('silSvg');
+    const startBtn  = document.getElementById('startBtn');
+    const closeAlign= document.getElementById('closeAlign');
+    const alignHint = document.getElementById('alignHint');
+
+    guide.style.setProperty('--sil-h', SILHOUETTE_HEIGHT);
+    guide.style.setProperty('--sil-w', SILHOUETTE_WIDTH);
+    guide.style.setProperty('--sil-op', SILHOUETTE_OPACITY);
+    if (SILHOUETTE_SRC) { silImg.src = SILHOUETTE_SRC; silImg.style.display = 'block'; silSvg.style.display = 'none'; }
+    else { silSvg.style.display = 'block'; }
+
+    /* ---- Rilevamento del sistema operativo ---- */
+    const ua = navigator.userAgent || '';
+    const isIOS = /iPad|iPhone|iPod/.test(ua) ||
+                  (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+    const isAndroid = /Android/.test(ua);
+
+    if (isIOS)      sub.textContent = "Tocca per aprire in AR: la scena (USDZ) si posiziona sul pavimento.";
+    else if (isAndroid) sub.textContent = "Tocca Avvia in AR, punta la coppa per orientarti, poi avvia lo show.";
+
+    let inXR = false;
+    let primed = false;
+    let showStarted = false;
+    let camStream = null;
+
+    viewer.addEventListener('load', () => {
+      if (!viewer.canActivateAR) fallback.style.display = 'block';
+    });
+
+    function enterAR() {
+      if (viewer.canActivateAR) viewer.activateAR();
+      else fallback.style.display = 'block';
+    }
+
+    arBtn.addEventListener('click', () => {
+      if (isAndroid && !primed) {
+        track.play().then(() => { track.pause(); track.currentTime = 0; primed = true; }).catch(() => {});
+      }
+      if (isIOS) { enterAR(); return; }
+      openAlign();
+    });
+
+    async function openAlign() {
+      align.classList.add('show');
+      try {
+        camStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: { ideal: 'environment' } }, audio: false });
+        camFeed.srcObject = camStream;
+      } catch (err) {
+        alignHint.textContent = "Fotocamera non disponibile. Puoi comunque avviare lo show.";
+        console.warn('getUserMedia:', err);
+      }
+    }
+    function stopCam() {
+      if (camStream) { camStream.getTracks().forEach(t => t.stop()); camStream = null; }
+      camFeed.srcObject = null;
+    }
+
+    startBtn.addEventListener('click', () => {
+      stopCam();
+      align.classList.remove('show');
+      enterAR();
+    });
+    closeAlign.addEventListener('click', () => { stopCam(); align.classList.remove('show'); });
+
+    /* ======= DA QUI IN POI: identico al file che funzionava (514_OLD) ======= */
+    viewer.addEventListener('ar-status', (e) => {
+      const s = e.detail.status;
+      console.log('[AR status]', s);
+      if (!isAndroid) return;
+
+      if (s === 'session-started') {
+        if (showStarted) return;
+        showStarted = true;
+        inXR = true;
+        viewer.pause();
+        viewer.currentTime = 0;
+        track.currentTime = 0;
+        track.play().catch(err => console.warn('Audio bloccato:', err));
+        requestAnimationFrame(syncLoop);
+
+      } else if (s === 'not-presenting' || s === 'failed') {
+        inXR = false;
+        showStarted = false;
+        track.pause();
+        viewer.play();
+      }
+    });
+
+    function syncLoop() {
+      if (!inXR) return;
+      try { viewer.currentTime = track.currentTime; } catch (_) {}
+      requestAnimationFrame(syncLoop);
+    }
+
+    track.addEventListener('ended', () => {
+      inXR = false;
+      window.location.href = REDIRECT_URL;
+    });
+  </script>
+</body>
+</html>
