@@ -6,20 +6,21 @@ const CONFIG = {
   realCupHeightMeters: 4.85,
   defaultSceneScale: 2.2,
   minSceneScale: 1.2,
-  maxSceneScale: 4.0,
+  maxSceneScale: 4.4,
   scaleStep: 0.12,
   distanceStep: 0.08,
   minDistanceFactor: 0.72,
-  maxDistanceFactor: 1.38,
+  maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
   yawOffsetRadians: Math.PI,
   finalUrl: "https://hisenseshow.it/landing/"
 };
 
-const STORAGE_KEYS = {
-  sceneScale: "hisense.sceneScale.front.v2",
-  distanceFactor: "hisense.distanceFactor.front.v2"
+const PLATFORM_DEFAULTS = {
+  android: { sceneScale: 1.56, distanceFactor: 1.4 },
+  ios: { sceneScale: 3.88, distanceFactor: 0.96 },
+  other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
 
 const app = document.getElementById("app");
@@ -42,7 +43,16 @@ const finalLink = document.querySelector(".final-link");
 
 const userAgent = navigator.userAgent || "";
 const isAndroid = /Android/i.test(userAgent);
+const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
+  || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
 const isChrome = /Chrome|CriOS/i.test(userAgent);
+const platformKey = isIOS ? "ios" : isAndroid ? "android" : "other";
+const platformDefaults = PLATFORM_DEFAULTS[platformKey];
+
+const STORAGE_KEYS = {
+  sceneScale: `hisense.sceneScale.${platformKey}.v4`,
+  distanceFactor: `hisense.distanceFactor.${platformKey}.v4`
+};
 
 let renderer;
 let scene;
@@ -58,8 +68,8 @@ let xrReferenceSpaceType = "local";
 let fallbackStream;
 let currentMode = "boot";
 let showRunning = false;
-let sceneScale = readStoredNumber(STORAGE_KEYS.sceneScale, CONFIG.defaultSceneScale);
-let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, 1);
+let sceneScale = readStoredNumber(STORAGE_KEYS.sceneScale, platformDefaults.sceneScale);
+let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, platformDefaults.distanceFactor);
 
 sceneScale = clamp(sceneScale, CONFIG.minSceneScale, CONFIG.maxSceneScale);
 distanceFactor = clamp(distanceFactor, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
