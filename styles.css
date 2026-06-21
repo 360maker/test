@@ -311,6 +311,21 @@ h2 {
   margin-top: 8px;
 }
 
+.ios-ar-link {
+  position: fixed;
+  left: -20px;
+  top: -20px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.ios-ar-link img {
+  width: 1px;
+  height: 1px;
+}
+
 .app[data-mode="calibrating"] .intro-panel,
 .app[data-mode="show"] .intro-panel,
 .app[data-mode="final"] .intro-panel,
