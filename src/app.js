@@ -14,7 +14,6 @@ const CONFIG = {
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
   yawOffsetRadians: Math.PI,
-  iosRedirectDelayMs: 32000,
   finalUrl: "https://hisenseshow.it/landing/"
 };
 
@@ -37,15 +36,16 @@ const largerButton = document.getElementById("largerButton");
 const nearerButton = document.getElementById("nearerButton");
 const fartherButton = document.getElementById("fartherButton");
 const statusText = document.getElementById("statusText");
+const supportLine = document.getElementById("supportLine");
 const cupGuide = document.getElementById("cupGuide");
 const audio = document.getElementById("showAudio");
 const finalLink = document.querySelector(".final-link");
-const iosArLink = document.getElementById("iosArLink");
 
 const userAgent = navigator.userAgent || "";
 const isAndroid = /Android/i.test(userAgent);
 const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
   || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const isChrome = /Chrome|CriOS/i.test(userAgent);
 const platformKey = isIOS ? "ios" : isAndroid ? "android" : "other";
 const platformDefaults = PLATFORM_DEFAULTS[platformKey];
 
@@ -68,13 +68,17 @@ let xrReferenceSpaceType = "local";
 let fallbackStream;
 let currentMode = "boot";
 let showRunning = false;
-let iosRedirectTimer = null;
 let sceneScale = readStoredNumber(STORAGE_KEYS.sceneScale, platformDefaults.sceneScale);
 let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, platformDefaults.distanceFactor);
 
 sceneScale = clamp(sceneScale, CONFIG.minSceneScale, CONFIG.maxSceneScale);
 distanceFactor = clamp(distanceFactor, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
 
+supportLine.textContent = isAndroid
+  ? isChrome
+    ? "WebXR quando disponibile, modalità compatibile sugli altri Android."
+    : "Apri con Chrome Android per la migliore stabilità AR."
+  : "Demo compatibile camera/WebGL su questo browser.";
 finalLink.href = CONFIG.finalUrl;
 
 startButton.addEventListener("click", startExperience);
@@ -95,13 +99,6 @@ async function startExperience() {
   setStatus("Caricamento scena");
 
   try {
-    if (isIOS) {
-      await startFallbackCamera();
-      setMode("fallback-calibrating");
-      setStatus("Sovrapponi la coppa");
-      return;
-    }
-
     await unlockAudio();
     await loadExperience();
 
@@ -126,6 +123,7 @@ async function startExperience() {
       console.error(fallbackError);
       setMode("boot");
       setStatus("Fotocamera non disponibile");
+      supportLine.textContent = "Serve accesso alla fotocamera o Chrome Android con WebXR.";
     }
   } finally {
     startButton.disabled = false;
@@ -271,11 +269,6 @@ async function startFallbackCamera() {
 }
 
 function placeAndStartShow() {
-  if (isIOS) {
-    launchIOSQuickLook();
-    return;
-  }
-
   if (!loaded) return;
 
   if (currentMode === "calibrating") {
@@ -287,18 +280,6 @@ function placeAndStartShow() {
   }
 
   startShow();
-}
-
-function launchIOSQuickLook() {
-  clearIOSRedirectTimer();
-  setMode("fallback-show");
-  setStatus("Show in corso");
-  audio.currentTime = 0;
-  audio.play().catch(() => {});
-  iosRedirectTimer = window.setTimeout(() => {
-    window.location.assign(CONFIG.finalUrl);
-  }, CONFIG.iosRedirectDelayMs);
-  iosArLink.click();
 }
 
 function placeStageFromXR() {
@@ -384,7 +365,6 @@ function restartShow() {
 
 function recalibrate() {
   showRunning = false;
-  clearIOSRedirectTimer();
   audio.pause();
   audio.currentTime = 0;
   mixer?.setTime(0);
@@ -465,7 +445,6 @@ function handleXREnd() {
 
 function closeExperience() {
   showRunning = false;
-  clearIOSRedirectTimer();
   audio.pause();
   audio.currentTime = 0;
   mixer?.setTime(0);
@@ -499,12 +478,6 @@ function setMode(mode) {
 function setStatus(message) {
   statusText.value = message;
   statusText.textContent = message;
-}
-
-function clearIOSRedirectTimer() {
-  if (!iosRedirectTimer) return;
-  window.clearTimeout(iosRedirectTimer);
-  iosRedirectTimer = null;
 }
 
 function readStoredNumber(key, fallback) {
