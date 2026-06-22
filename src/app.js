@@ -6,10 +6,11 @@ const CONFIG = {
   realCupHeightMeters: 4.85,
   defaultSceneScale: 2.2,
   minSceneScale: 1.2,
-  maxSceneScale: 14.4, 
+  maxSceneScale: 30.4, 
   scaleStep: 0.12,
   distanceStep: 0.08,
-  minDistanceFactor: 0.72,
+  //minDistanceFactor: 0.72,
+  minDistanceFactor: 0.25,
   maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
@@ -20,7 +21,7 @@ const CONFIG = {
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 9.9, distanceFactor: 0.8 },
+  ios: { sceneScale: 13.5, distanceFactor: 0.35 },
   //ios: { sceneScale: 7.2, distanceFactor: 0.5 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
@@ -319,7 +320,8 @@ function placeStageFromXR() {
 
 function placeStageForFallback() {
   const portrait = window.innerHeight >= window.innerWidth;
-  camera.fov = portrait ? 96 : 68;
+
+  camera.fov = isIOS ? 72 : (portrait ? 96 : 68);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.near = 0.05;
   camera.far = 120;
@@ -327,7 +329,9 @@ function placeStageForFallback() {
   camera.lookAt(0, portrait ? 4.4 : 3.2, -14);
   camera.updateProjectionMatrix();
 
-  const rootPosition = new THREE.Vector3(0, 0, -CONFIG.fallbackDistanceMeters * distanceFactor);
+  const baseDistance = isIOS ? 6.0 : CONFIG.fallbackDistanceMeters;
+  const rootPosition = new THREE.Vector3(0, 0, -baseDistance * distanceFactor);
+
   orientAndScaleStage(rootPosition, camera.position);
 }
 
