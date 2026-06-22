@@ -19,7 +19,7 @@ const CONFIG = {
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 2.52, distanceFactor: 0.8 },
+  ios: { sceneScale: 2.28, distanceFactor: 0.8 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
 
@@ -48,7 +48,7 @@ const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
 const isChrome = /Chrome|CriOS/i.test(userAgent);
 const platformKey = isIOS ? "ios" : isAndroid ? "android" : "other";
 const platformDefaults = PLATFORM_DEFAULTS[platformKey];
-const storageVersion = platformKey === "ios" ? "v6" : "v4";
+const storageVersion = platformKey === "ios" ? "v7" : "v4";
 
 const STORAGE_KEYS = {
   sceneScale: `hisense.sceneScale.${platformKey}.${storageVersion}`,
