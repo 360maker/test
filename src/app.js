@@ -343,6 +343,10 @@ function placeStageForFallback() {
 }
 
 function orientAndScaleStage(rootPosition, cameraPosition) {
+  
+  if (isIOS) {
+    rootPosition.y += 1.5;   // prova inizialmente 1.5
+  }
   stageRoot.position.copy(rootPosition);
   const directionToCamera = cameraPosition.clone().sub(rootPosition);
   directionToCamera.y = 0;
