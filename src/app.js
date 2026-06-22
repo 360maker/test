@@ -15,13 +15,15 @@ const CONFIG = {
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
   iosVerticalOffsetMeters: 5.0,
+  iosFallbackDistanceMeters: 3.0,
+  iosDefaultSceneScale: 8.0,
   yawOffsetRadians: Math.PI,
   finalUrl: "https://hisenseshow.it/landing/"
 };
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 6.5, distanceFactor: 1.15 },
+  ios: { sceneScale: 8.0, distanceFactor: 1.0 },
   //ios: { sceneScale: 7.2, distanceFactor: 0.5 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
@@ -321,7 +323,7 @@ function placeStageFromXR() {
 function placeStageForFallback() {
   const portrait = window.innerHeight >= window.innerWidth;
 
-  camera.fov = isIOS ? 72 : (portrait ? 96 : 68);
+  camera.fov = isIOS ? 82 : (portrait ? 96 : 68);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.near = 0.05;
   camera.far = 120;
@@ -329,8 +331,12 @@ function placeStageForFallback() {
   camera.lookAt(0, portrait ? 4.4 : 3.2, -14);
   camera.updateProjectionMatrix();
 
-  const baseDistance = isIOS ? 6.0 : CONFIG.fallbackDistanceMeters;
-  const rootPosition = new THREE.Vector3(0, 0, -baseDistance * distanceFactor);
+  const baseDistance = isIOS ? 3.0 : CONFIG.fallbackDistanceMeters;
+  const rootPosition = new THREE.Vector3(
+    0,
+    0,
+    -baseDistance * distanceFactor
+  );
 
   orientAndScaleStage(rootPosition, camera.position);
 }
