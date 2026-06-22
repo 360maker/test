@@ -16,6 +16,7 @@ const CONFIG = {
   maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
+  iosVerticalOffsetMeters: 2.2,
   yawOffsetRadians: Math.PI,
   finalUrl: "https://hisenseshow.it/landing/"
 };
@@ -334,7 +335,13 @@ function placeStageForFallback() {
 }
 
 function orientAndScaleStage(rootPosition, cameraPosition) {
+  //stageRoot.position.copy(rootPosition);
   stageRoot.position.copy(rootPosition);
+
+  if (platformKey === "ios") {
+    stageRoot.position.y += CONFIG.iosVerticalOffsetMeters;
+  }
+  
   const directionToCamera = cameraPosition.clone().sub(rootPosition);
   directionToCamera.y = 0;
   if (directionToCamera.lengthSq() < 0.0001) directionToCamera.set(0, 0, -1);
