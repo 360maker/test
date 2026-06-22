@@ -13,13 +13,14 @@ const CONFIG = {
   maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
+  iosVerticalOffsetMeters: 1.0,
   yawOffsetRadians: Math.PI,
   finalUrl: "https://hisenseshow.it/landing/"
 };
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 3.12, distanceFactor: 0.8 },
+  ios: { sceneScale: 3.24, distanceFactor: 0.8 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
 
@@ -48,7 +49,7 @@ const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
 const isChrome = /Chrome|CriOS/i.test(userAgent);
 const platformKey = isIOS ? "ios" : isAndroid ? "android" : "other";
 const platformDefaults = PLATFORM_DEFAULTS[platformKey];
-const storageVersion = platformKey === "ios" ? "v7" : "v4";
+const storageVersion = platformKey === "ios" ? "v8" : "v4";
 
 const STORAGE_KEYS = {
   sceneScale: `hisense.sceneScale.${platformKey}.${storageVersion}`,
@@ -324,7 +325,12 @@ function placeStageForFallback() {
 }
 
 function orientAndScaleStage(rootPosition, cameraPosition) {
+  if (isIOS) {
+    rootPosition.y += CONFIG.iosVerticalOffsetMeters;
+  }
+
   stageRoot.position.copy(rootPosition);
+
   const directionToCamera = cameraPosition.clone().sub(rootPosition);
   directionToCamera.y = 0;
   if (directionToCamera.lengthSq() < 0.0001) directionToCamera.set(0, 0, -1);
