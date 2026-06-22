@@ -86,6 +86,11 @@ let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, platformDefau
 sceneScale = clamp(sceneScale, CONFIG.minSceneScale, CONFIG.maxSceneScale);
 distanceFactor = clamp(distanceFactor, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
 
+if (isIOS) {
+  sceneScale = 7.8;
+  distanceFactor = 0.81;
+}
+
 if (supportLine) {
   supportLine.textContent = isAndroid
     ? isChrome
