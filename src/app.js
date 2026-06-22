@@ -49,7 +49,7 @@ const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
 const isChrome = /Chrome|CriOS/i.test(userAgent);
 const platformKey = isIOS ? "ios" : isAndroid ? "android" : "other";
 const platformDefaults = PLATFORM_DEFAULTS[platformKey];
-const storageVersion = platformKey === "ios" ? "v8" : "v4";
+const storageVersion = platformKey === "ios" ? "v7" : "v4";
 
 const STORAGE_KEYS = {
   sceneScale: `hisense.sceneScale.${platformKey}.${storageVersion}`,
