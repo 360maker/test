@@ -20,7 +20,7 @@ const CONFIG = {
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 10.12, distanceFactor: 0.8 },
+  ios: { sceneScale: 9.9, distanceFactor: 0.8 },
   //ios: { sceneScale: 7.2, distanceFactor: 0.5 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
