@@ -13,14 +13,13 @@ const CONFIG = {
   maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
-  iosCupHeadGuideRatio: 0.07,
   yawOffsetRadians: Math.PI,
   finalUrl: "https://hisenseshow.it/landing/"
 };
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 2.76, distanceFactor: 0.8 },
+  ios: { sceneScale: 3.12, distanceFactor: 0.8 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
 
@@ -70,8 +69,8 @@ let xrReferenceSpaceType = "local";
 let fallbackStream;
 let currentMode = "boot";
 let showRunning = false;
-let sceneScale = readPlatformNumber(STORAGE_KEYS.sceneScale, platformDefaults.sceneScale);
-let distanceFactor = readPlatformNumber(STORAGE_KEYS.distanceFactor, platformDefaults.distanceFactor);
+let sceneScale = readStoredNumber(STORAGE_KEYS.sceneScale, platformDefaults.sceneScale);
+let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, platformDefaults.distanceFactor);
 
 sceneScale = clamp(sceneScale, CONFIG.minSceneScale, CONFIG.maxSceneScale);
 distanceFactor = clamp(distanceFactor, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
@@ -321,9 +320,6 @@ function placeStageForFallback() {
   camera.updateProjectionMatrix();
 
   const rootPosition = new THREE.Vector3(0, 0, -CONFIG.fallbackDistanceMeters * distanceFactor);
-  if (isIOS) {
-    alignIOSFallbackStageToCupHead(rootPosition);
-  }
   orientAndScaleStage(rootPosition, camera.position);
 }
 
@@ -351,75 +347,6 @@ function getGuideHeightFraction() {
   const rect = cupGuide.getBoundingClientRect();
   const height = rect.height || window.innerHeight * 0.64;
   return clamp(height / Math.max(window.innerHeight, 1), 0.46, 0.78);
-}
-
-function alignIOSFallbackStageToCupHead(rootPosition) {
-  const box = measureModelBoxAtTime(0);
-  if (!box || box.isEmpty()) return;
-
-  camera.updateMatrixWorld(true);
-  const guideFrame = getCupGuideFrameRect();
-  const targetHead = screenPointToWorldOnPlaneZ(
-    guideFrame.left + guideFrame.width / 2,
-    guideFrame.top + guideFrame.height * CONFIG.iosCupHeadGuideRatio,
-    rootPosition.z
-  );
-
-  rootPosition.y = targetHead.y - box.max.y * sceneScale;
-}
-
-function measureModelBoxAtTime(time) {
-  if (!model) return null;
-
-  const previousPosition = stageRoot.position.clone();
-  const previousQuaternion = stageRoot.quaternion.clone();
-  const previousScale = stageRoot.scale.clone();
-  const previousVisible = stageRoot.visible;
-
-  stageRoot.position.set(0, 0, 0);
-  stageRoot.rotation.set(0, 0, 0);
-  stageRoot.scale.set(1, 1, 1);
-  stageRoot.visible = true;
-  mixer?.setTime(Math.min(time, clipDuration));
-  stageRoot.updateMatrixWorld(true);
-  model.updateMatrixWorld(true);
-
-  const box = new THREE.Box3().setFromObject(model);
-
-  stageRoot.position.copy(previousPosition);
-  stageRoot.quaternion.copy(previousQuaternion);
-  stageRoot.scale.copy(previousScale);
-  stageRoot.visible = previousVisible;
-  stageRoot.updateMatrixWorld(true);
-  mixer?.setTime(0);
-
-  return box;
-}
-
-function getCupGuideFrameRect() {
-  const rect = cupGuide.getBoundingClientRect();
-  const width = Math.min(window.innerWidth * 0.74, window.innerHeight * 0.44);
-  const height = Math.min(window.innerWidth * 1.11, window.innerHeight * 0.66);
-  const centerX = rect.left + rect.width / 2;
-  const centerY = rect.top + rect.height / 2;
-
-  return {
-    left: centerX - width / 2,
-    top: centerY - height / 2,
-    width,
-    height
-  };
-}
-
-function screenPointToWorldOnPlaneZ(screenX, screenY, planeZ) {
-  const point = new THREE.Vector3(
-    (screenX / Math.max(window.innerWidth, 1)) * 2 - 1,
-    -(screenY / Math.max(window.innerHeight, 1)) * 2 + 1,
-    0.5
-  ).unproject(camera);
-  const direction = point.sub(camera.position).normalize();
-  const distance = (planeZ - camera.position.z) / direction.z;
-  return camera.position.clone().add(direction.multiplyScalar(distance));
 }
 
 function startShow() {
@@ -473,14 +400,14 @@ function render() {
 
 function adjustScale(delta) {
   sceneScale = clamp(sceneScale + delta, CONFIG.minSceneScale, CONFIG.maxSceneScale);
-  storePlatformNumber(STORAGE_KEYS.sceneScale, sceneScale);
+  localStorage.setItem(STORAGE_KEYS.sceneScale, String(sceneScale));
   stageRoot?.scale.setScalar(sceneScale);
   setStatus(`Scala ${Math.round(sceneScale * 100)}%`);
 }
 
 function adjustDistance(delta) {
   distanceFactor = clamp(distanceFactor + delta, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
-  storePlatformNumber(STORAGE_KEYS.distanceFactor, distanceFactor);
+  localStorage.setItem(STORAGE_KEYS.distanceFactor, String(distanceFactor));
   setStatus(`Distanza ${Math.round(distanceFactor * 100)}%`);
 }
 
@@ -561,16 +488,6 @@ function setStatus(message) {
 function readStoredNumber(key, fallback) {
   const value = Number(localStorage.getItem(key));
   return Number.isFinite(value) ? value : fallback;
-}
-
-function readPlatformNumber(key, fallback) {
-  return isIOS ? fallback : readStoredNumber(key, fallback);
-}
-
-function storePlatformNumber(key, value) {
-  if (!isIOS) {
-    localStorage.setItem(key, String(value));
-  }
 }
 
 function clamp(value, min, max) {
