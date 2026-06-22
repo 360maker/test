@@ -6,25 +6,20 @@ const CONFIG = {
   realCupHeightMeters: 4.85,
   defaultSceneScale: 2.2,
   minSceneScale: 1.2,
-  maxSceneScale: 30.4, 
+  maxSceneScale: 4.4,
   scaleStep: 0.12,
   distanceStep: 0.08,
-  //minDistanceFactor: 0.72,
-  minDistanceFactor: 0.25,
+  minDistanceFactor: 0.72,
   maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
-  iosVerticalOffsetMeters: 5.0,
-  iosFallbackDistanceMeters: 3.0,
-  iosDefaultSceneScale: 8.0,
   yawOffsetRadians: Math.PI,
   finalUrl: "https://hisenseshow.it/landing/"
 };
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 5.8, distanceFactor: 1.25 },
-  //ios: { sceneScale: 7.2, distanceFactor: 0.5 },
+  ios: { sceneScale: 3.12, distanceFactor: 0.8 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
 
@@ -60,11 +55,6 @@ const STORAGE_KEYS = {
   distanceFactor: `hisense.distanceFactor.${platformKey}.${storageVersion}`
 };
 
-if (platformKey === "ios") {
-  localStorage.removeItem(STORAGE_KEYS.sceneScale);
-  localStorage.removeItem(STORAGE_KEYS.distanceFactor);
-}
-
 let renderer;
 let scene;
 let camera;
@@ -82,14 +72,8 @@ let showRunning = false;
 let sceneScale = readStoredNumber(STORAGE_KEYS.sceneScale, platformDefaults.sceneScale);
 let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, platformDefaults.distanceFactor);
 
-
 sceneScale = clamp(sceneScale, CONFIG.minSceneScale, CONFIG.maxSceneScale);
 distanceFactor = clamp(distanceFactor, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
-
-if (isIOS) {
-  sceneScale = 7.8;
-  distanceFactor = 0.81;
-}
 
 if (supportLine) {
   supportLine.textContent = isAndroid
@@ -327,8 +311,7 @@ function placeStageFromXR() {
 
 function placeStageForFallback() {
   const portrait = window.innerHeight >= window.innerWidth;
-
-  camera.fov = isIOS ? 72 : (portrait ? 96 : 68);
+  camera.fov = portrait ? 96 : 68;
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.near = 0.05;
   camera.far = 120;
@@ -336,22 +319,11 @@ function placeStageForFallback() {
   camera.lookAt(0, portrait ? 4.4 : 3.2, -14);
   camera.updateProjectionMatrix();
 
-  const baseDistance = isIOS ? 4.6 : CONFIG.fallbackDistanceMeters;
-  
-  const rootPosition = new THREE.Vector3(
-    0,
-    0,
-    -baseDistance * distanceFactor
-  );
-
+  const rootPosition = new THREE.Vector3(0, 0, -CONFIG.fallbackDistanceMeters * distanceFactor);
   orientAndScaleStage(rootPosition, camera.position);
 }
 
 function orientAndScaleStage(rootPosition, cameraPosition) {
-  
-  if (isIOS) {
-    rootPosition.y += 1.5;   // prova inizialmente 1.5
-  }
   stageRoot.position.copy(rootPosition);
   const directionToCamera = cameraPosition.clone().sub(rootPosition);
   directionToCamera.y = 0;
