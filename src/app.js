@@ -16,7 +16,7 @@ const CONFIG = {
   maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
-  iosVerticalOffsetMeters: 2.2,
+  iosVerticalOffsetMeters: 3.0,
   yawOffsetRadians: Math.PI,
   finalUrl: "https://hisenseshow.it/landing/"
 };
