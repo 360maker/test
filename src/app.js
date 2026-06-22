@@ -323,7 +323,7 @@ function placeStageFromXR() {
 function placeStageForFallback() {
   const portrait = window.innerHeight >= window.innerWidth;
 
-  camera.fov = isIOS ? 82 : (portrait ? 96 : 68);
+  camera.fov = isIOS ? 95 : (portrait ? 96 : 68);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.near = 0.05;
   camera.far = 120;
