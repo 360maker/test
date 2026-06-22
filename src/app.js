@@ -6,12 +6,9 @@ const CONFIG = {
   realCupHeightMeters: 4.85,
   defaultSceneScale: 2.2,
   minSceneScale: 1.2,
-  //maxSceneScale: 4.4,
-  maxSceneScale: 4.4, // prima 4.4
+  maxSceneScale: 4.4, 
   scaleStep: 0.12,
-  //scaleStep: 0.12,
   distanceStep: 0.08,
-  //minDistanceFactor: 0.72,
   minDistanceFactor: 0.72,
   maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
@@ -23,7 +20,7 @@ const CONFIG = {
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 3.12, distanceFactor: 0.8 },
+  ios: { sceneScale: 7.12, distanceFactor: 0.8 },
   //ios: { sceneScale: 7.2, distanceFactor: 0.5 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
