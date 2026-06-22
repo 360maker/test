@@ -23,7 +23,7 @@ const CONFIG = {
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 8.0, distanceFactor: 1.0 },
+  ios: { sceneScale: 6.5, distanceFactor: 1.25 },
   //ios: { sceneScale: 7.2, distanceFactor: 0.5 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
@@ -332,6 +332,7 @@ function placeStageForFallback() {
   camera.updateProjectionMatrix();
 
   const baseDistance = isIOS ? 3.0 : CONFIG.fallbackDistanceMeters;
+  
   const rootPosition = new THREE.Vector3(
     0,
     0,
