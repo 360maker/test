@@ -6,10 +6,13 @@ const CONFIG = {
   realCupHeightMeters: 4.85,
   defaultSceneScale: 2.2,
   minSceneScale: 1.2,
-  maxSceneScale: 4.4,
-  scaleStep: 0.12,
+  //maxSceneScale: 4.4,
+  maxSceneScale: 8.0, // prima 4.4
+  scaleStep: 0.25,
+  //scaleStep: 0.12,
   distanceStep: 0.08,
-  minDistanceFactor: 0.72,
+  //minDistanceFactor: 0.72,
+  minDistanceFactor: 0.45,
   maxDistanceFactor: 1.6,
   fallbackDistanceMeters: 11.5,
   fallbackEyeHeightMeters: 1.55,
@@ -19,7 +22,8 @@ const CONFIG = {
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 3.12, distanceFactor: 0.8 },
+  //ios: { sceneScale: 3.12, distanceFactor: 0.8 },
+  ios: { sceneScale: 6.0, distanceFactor: 0.55 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
 
@@ -55,6 +59,11 @@ const STORAGE_KEYS = {
   distanceFactor: `hisense.distanceFactor.${platformKey}.${storageVersion}`
 };
 
+if (platformKey === "ios") {
+  localStorage.removeItem(STORAGE_KEYS.sceneScale);
+  localStorage.removeItem(STORAGE_KEYS.distanceFactor);
+}
+
 let renderer;
 let scene;
 let camera;
@@ -71,6 +80,7 @@ let currentMode = "boot";
 let showRunning = false;
 let sceneScale = readStoredNumber(STORAGE_KEYS.sceneScale, platformDefaults.sceneScale);
 let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, platformDefaults.distanceFactor);
+
 
 sceneScale = clamp(sceneScale, CONFIG.minSceneScale, CONFIG.maxSceneScale);
 distanceFactor = clamp(distanceFactor, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
