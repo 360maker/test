@@ -23,7 +23,7 @@ const CONFIG = {
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 7.8, distanceFactor: 0.81 },
+  ios: { sceneScale: 5.8, distanceFactor: 1.25 },
   //ios: { sceneScale: 7.2, distanceFactor: 0.5 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
@@ -328,7 +328,7 @@ function placeStageFromXR() {
 function placeStageForFallback() {
   const portrait = window.innerHeight >= window.innerWidth;
 
-  camera.fov = isIOS ? 95 : (portrait ? 96 : 68);
+  camera.fov = isIOS ? 72 : (portrait ? 96 : 68);
   camera.aspect = window.innerWidth / window.innerHeight;
   camera.near = 0.05;
   camera.far = 120;
@@ -344,6 +344,9 @@ function placeStageForFallback() {
     -baseDistance * distanceFactor
   );
 
+  if (isIOS) {
+    rootPosition.y += 2.0;
+  }
   orientAndScaleStage(rootPosition, camera.position);
 }
 
