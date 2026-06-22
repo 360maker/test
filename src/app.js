@@ -19,7 +19,7 @@ const CONFIG = {
 
 const PLATFORM_DEFAULTS = {
   android: { sceneScale: 1.56, distanceFactor: 1.4 },
-  ios: { sceneScale: 3.88, distanceFactor: 0.96 },
+  ios: { sceneScale: 3.72, distanceFactor: 1.12 },
   other: { sceneScale: CONFIG.defaultSceneScale, distanceFactor: 1 }
 };
 
@@ -48,10 +48,11 @@ const isIOS = /iPad|iPhone|iPod/i.test(userAgent)
 const isChrome = /Chrome|CriOS/i.test(userAgent);
 const platformKey = isIOS ? "ios" : isAndroid ? "android" : "other";
 const platformDefaults = PLATFORM_DEFAULTS[platformKey];
+const storageVersion = platformKey === "ios" ? "v5" : "v4";
 
 const STORAGE_KEYS = {
-  sceneScale: `hisense.sceneScale.${platformKey}.v4`,
-  distanceFactor: `hisense.distanceFactor.${platformKey}.v4`
+  sceneScale: `hisense.sceneScale.${platformKey}.${storageVersion}`,
+  distanceFactor: `hisense.distanceFactor.${platformKey}.${storageVersion}`
 };
 
 let renderer;
@@ -74,11 +75,13 @@ let distanceFactor = readStoredNumber(STORAGE_KEYS.distanceFactor, platformDefau
 sceneScale = clamp(sceneScale, CONFIG.minSceneScale, CONFIG.maxSceneScale);
 distanceFactor = clamp(distanceFactor, CONFIG.minDistanceFactor, CONFIG.maxDistanceFactor);
 
-supportLine.textContent = isAndroid
-  ? isChrome
-    ? "WebXR quando disponibile, modalità compatibile sugli altri Android."
-    : "Apri con Chrome Android per la migliore stabilità AR."
-  : "Demo compatibile camera/WebGL su questo browser.";
+if (supportLine) {
+  supportLine.textContent = isAndroid
+    ? isChrome
+      ? "WebXR quando disponibile, modalità compatibile sugli altri Android."
+      : "Apri con Chrome Android per la migliore stabilità AR."
+    : "Demo compatibile camera/WebGL su questo browser.";
+}
 finalLink.href = CONFIG.finalUrl;
 
 startButton.addEventListener("click", startExperience);
@@ -123,7 +126,9 @@ async function startExperience() {
       console.error(fallbackError);
       setMode("boot");
       setStatus("Fotocamera non disponibile");
-      supportLine.textContent = "Serve accesso alla fotocamera o Chrome Android con WebXR.";
+      if (supportLine) {
+        supportLine.textContent = "Serve accesso alla fotocamera o Chrome Android con WebXR.";
+      }
     }
   } finally {
     startButton.disabled = false;
