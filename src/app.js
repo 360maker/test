@@ -344,9 +344,6 @@ function placeStageForFallback() {
     -baseDistance * distanceFactor
   );
 
-  if (isIOS) {
-    rootPosition.y += 2.0;
-  }
   orientAndScaleStage(rootPosition, camera.position);
 }
 
