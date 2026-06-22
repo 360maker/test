@@ -6,7 +6,7 @@ const CONFIG = {
   realCupHeightMeters: 4.85,
   defaultSceneScale: 2.2,
   minSceneScale: 1.2,
-  maxSceneScale: 4.4, 
+  maxSceneScale: 14.4, 
   scaleStep: 0.12,
   distanceStep: 0.08,
   minDistanceFactor: 0.72,
